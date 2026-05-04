@@ -4,6 +4,10 @@ Turn a ComfyUI batch manifest into a labeled matrix video.
 
 `comfyui-matrix-videos` is a small Python CLI for reviewing video/image-generation sweeps: rows and columns are batch parameters, and each cell plays the corresponding generated clip. It is designed to pair well with the Hermes Agent ComfyUI skill's `run_batch.py` output, but it also works as a standalone manifest-to-MP4 tool.
 
+<p align="center">
+  <img src="docs/assets/comfyui-matrix-demo.gif" alt="Animated ComfyUI matrix review grid" width="720">
+</p>
+
 ## Features
 
 - Reads JSON, JSONL, or CSV manifests.
