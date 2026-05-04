@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+uv.lock
+.venv/
+.pytest_cache/
+
+# Build output
+build/
+dist/
+
+# Generated media / temp work
+outputs/
+*.mp4
+*.mov
+*.webm
+*.mkv
+*.avi
+*_matrix.png
+/tmp/
+
+# OS/editor
+.DS_Store
+.vscode/
+.idea/
+
+# Local AI assistant config
+.claude/
+.cache/
+.hermes/
+

@@ -1,0 +1,25 @@
+{
+  "canvas_max": 2048,
+  "background": "#000000",
+  "grid_line": "#2d2d32",
+  "text_color": "#ffc5d3",
+  "muted_text_color": "#ffc5d3",
+  "font_regular": "DejaVuSansMono.ttf",
+  "font_bold": "DejaVuSansMono-Bold.ttf",
+  "title_font_size": 36,
+  "subtitle_font_size": 22,
+  "label_font_size": 20,
+  "row_label_font_size": 20,
+  "legend_width": 260,
+  "legend_height": 240,
+  "grid_line_width": 1,
+  "title_y": 22,
+  "subtitle_y": 82,
+  "header_grid_y": 150,
+  "column_label_bottom_padding": 18,
+  "row_label_left_padding": 14,
+  "crf": 18,
+  "fps": 30,
+  "work_root": ""
+}
+

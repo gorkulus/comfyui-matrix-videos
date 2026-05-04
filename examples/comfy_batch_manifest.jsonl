@@ -1,0 +1,4 @@
+{"status":"success","index":0,"args":{"steps":8,"seed":101},"outputs":[{"file":"media/steps8_seed101.mp4","type":"video"}]}
+{"status":"success","index":1,"args":{"steps":8,"seed":202},"outputs":[{"file":"media/steps8_seed202.mp4","type":"video"}]}
+{"status":"success","index":2,"args":{"steps":16,"seed":101},"outputs":[{"file":"media/steps16_seed101.mp4","type":"video"}]}
+{"status":"success","index":3,"args":{"steps":16,"seed":202},"outputs":[{"file":"media/steps16_seed202.mp4","type":"video"}]}
