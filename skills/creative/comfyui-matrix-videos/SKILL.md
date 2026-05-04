@@ -131,15 +131,20 @@ comfy-matrix-video \
 
 ## Style
 
+The bundled default style is intended to be public-facing, not just utilitarian: black canvas, white text, subtle white grid lines, generous header spacing, pixel-aware row-label wrapping, and a top legend band with no horizontal line directly above the column labels.
+
 Use `--style templates/matrix_style.example.json` to customize:
 
-- canvas size
-- colors
-- font names/paths
-- label sizes
-- legend dimensions
+- canvas size, optional fixed cell size, and legend dimensions
+- colors and grid-line alpha
+- font family, explicit font paths, and variable-font weights
+- title/subtitle/label sizes and positions
+- row-label left/right padding
+- top legend padding and separator positions
 - FPS and CRF
 - temp work root
+
+Font handling is local-only. A style may name a family such as `Raleway`; the renderer asks the local system/fontconfig for that font and falls back to `font_fallback` when unavailable. It does not stream Google Fonts or download fonts at render time. For repeatable output, install or vendor the `.ttf` locally and set `font_regular` / `title_font` to that path.
 
 Keep the temp work root outside directories that other apps are watching. Matrix generation creates many temporary PNG frames.
 

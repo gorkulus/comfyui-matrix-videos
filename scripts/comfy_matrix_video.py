@@ -31,25 +31,32 @@ DEFAULT_VIDEO_KEYS = (
     "path",
 )
 DEFAULT_STYLE = {
-    "canvas_max": 2048,
+    "canvas_max": 2114,
     "background": "#000000",
-    "grid_line": "#2d2d32",
-    "text_color": "#ffc5d3",
-    "muted_text_color": "#ffc5d3",
-    "font_regular": "DejaVuSansMono.ttf",
-    "font_bold": "DejaVuSansMono-Bold.ttf",
-    "title_font_size": 36,
+    "grid_line": "#ffffff",
+    "grid_line_alpha": 0.38,
+    "text_color": "#ffffff",
+    "muted_text_color": "#ffffff",
+    "font_family": "Raleway",
+    "font_fallback": "DejaVuSans.ttf",
+    "font_regular": "",
+    "font_bold": "",
+    "font_variation_name": "Medium",
+    "title_font_variation_name": "Regular",
+    "title_font_size": 53,
     "subtitle_font_size": 22,
     "label_font_size": 20,
     "row_label_font_size": 20,
-    "legend_width": 260,
-    "legend_height": 240,
+    "legend_width": 240,
+    "legend_height": 308,
     "grid_line_width": 1,
-    "title_y": 22,
-    "subtitle_y": 82,
-    "header_grid_y": 150,
-    "column_label_bottom_padding": 18,
-    "row_label_left_padding": 14,
+    "title_y": 54,
+    "subtitle_y": 126,
+    "header_grid_y": 226,
+    "skip_header_grid_line": True,
+    "column_label_bottom_padding": 22,
+    "row_label_left_padding": 42,
+    "row_label_right_padding": 48,
     "crf": 18,
     "fps": 30,
     "work_root": "",
@@ -78,10 +85,38 @@ def hex_to_rgb(value: str) -> tuple[int, int, int]:
     return tuple(int(value[i : i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
 
 
-def load_font(spec: str | None, size: int) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+def blend_rgb(src: tuple[int, int, int], dst: tuple[int, int, int], alpha: float) -> tuple[int, int, int]:
+    alpha = max(0.0, min(1.0, alpha))
+    return tuple(int(round(src[i] * alpha + dst[i] * (1.0 - alpha))) for i in range(3))
+
+
+def draw_styled_line(
+    draw: ImageDraw.ImageDraw,
+    points: list[tuple[int, int]],
+    *,
+    fill: tuple[int, int, int],
+    width: int,
+    background: tuple[int, int, int],
+    alpha: float,
+) -> None:
+    if alpha < 1.0:
+        fill = blend_rgb(fill, background, alpha)
+    draw.line(points, fill=fill, width=max(1, int(width)))
+
+
+def load_font(
+    spec: str | None,
+    size: int,
+    *,
+    family: str | None = None,
+    variation_name: str | None = None,
+    fallback: str | None = None,
+) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
+    candidates: list[str] = []
     if spec:
         expanded = Path(spec).expanduser()
-        candidates = [expanded] if expanded.exists() else []
+        if expanded.exists():
+            candidates.append(str(expanded))
         common_dirs = [
             Path("/usr/share/fonts/truetype/dejavu"),
             Path("/usr/share/fonts/TTF"),
@@ -89,17 +124,39 @@ def load_font(spec: str | None, size: int) -> ImageFont.FreeTypeFont | ImageFont
             Path("/Library/Fonts"),
             Path("/System/Library/Fonts"),
         ]
-        candidates.extend(d / spec for d in common_dirs)
-        for candidate in candidates:
-            try:
-                if candidate.exists():
-                    return ImageFont.truetype(str(candidate), size)
-            except Exception:
-                pass
+        candidates.extend(str(d / spec) for d in common_dirs)
+        candidates.append(spec)
+    if family and shutil.which("fc-match"):
         try:
-            return ImageFont.truetype(spec, size)
+            matched = subprocess.run(
+                ["fc-match", "-f", "%{file}", family],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            if matched:
+                candidates.append(matched)
         except Exception:
             pass
+    if family:
+        candidates.append(family)
+    if fallback:
+        candidates.append(fallback)
+
+    for candidate in candidates:
+        try:
+            font = ImageFont.truetype(candidate, size)
+            if variation_name and hasattr(font, "set_variation_by_name"):
+                try:
+                    font.set_variation_by_name(variation_name.encode("utf-8"))
+                except Exception:
+                    try:
+                        font.set_variation_by_name(variation_name)
+                    except Exception:
+                        pass
+            return font
+        except Exception:
+            continue
     return ImageFont.load_default()
 
 
@@ -123,6 +180,41 @@ def wrap_label(text: Any, max_chars: int, max_lines: int = 4) -> str:
         lines.append(current)
     if len(lines) == max_lines and len(" ".join(words)) > len(" ".join(lines)):
         lines[-1] = lines[-1].rstrip("…")[: max(1, max_chars - 1)] + "…"
+    return "\n".join(lines)
+
+
+def wrap_label_pixels(
+    text: Any,
+    draw: ImageDraw.ImageDraw,
+    font: ImageFont.FreeTypeFont | ImageFont.ImageFont,
+    max_width: int,
+    max_lines: int = 4,
+) -> str:
+    words = str(text).replace("_", " ").split()
+    if not words:
+        return ""
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = (current + " " + word).strip() if current else word
+        bbox = draw.textbbox((0, 0), candidate, font=font)
+        if (bbox[2] - bbox[0]) <= max_width or not current:
+            current = candidate
+            continue
+        lines.append(current)
+        current = word
+        if len(lines) >= max_lines:
+            break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    if len(lines) == max_lines and len(" ".join(words)) > len(" ".join(lines)):
+        while lines[-1]:
+            candidate = lines[-1].rstrip("…") + "…"
+            bbox = draw.textbbox((0, 0), candidate, font=font)
+            if (bbox[2] - bbox[0]) <= max_width:
+                lines[-1] = candidate
+                break
+            lines[-1] = lines[-1][:-1]
     return "\n".join(lines)
 
 
@@ -383,7 +475,8 @@ def render_matrix(
     canvas = int(style["canvas_max"])
     legend_w = int(style["legend_width"])
     legend_h = int(style["legend_height"])
-    cell = min((canvas - legend_w) // ncols, (canvas - legend_h) // nrows)
+    fixed_cell_px = style.get("fixed_cell_px")
+    cell = int(fixed_cell_px) if fixed_cell_px else min((canvas - legend_w) // ncols, (canvas - legend_h) // nrows)
     if cell <= 0:
         raise MatrixError(f"Grid {nrows}x{ncols} is too large for canvas_max={canvas}.")
     width = legend_w + cell * ncols
@@ -428,11 +521,39 @@ def render_matrix(
         text = hex_to_rgb(str(style["text_color"]))
         muted = hex_to_rgb(str(style.get("muted_text_color", style["text_color"])))
         grid = hex_to_rgb(str(style["grid_line"]))
-        title_font = load_font(style.get("font_bold"), int(style["title_font_size"]))
-        subtitle_font = load_font(style.get("font_regular"), int(style["subtitle_font_size"]))
-        label_font = load_font(style.get("font_regular"), int(style["label_font_size"]))
-        row_font = load_font(style.get("font_regular"), int(style["row_label_font_size"]))
+        family = str(style.get("font_family") or "") or None
+        fallback = str(style.get("font_fallback") or "") or None
+        title_font = load_font(
+            style.get("title_font") or style.get("font_bold"),
+            int(style["title_font_size"]),
+            family=family,
+            variation_name=style.get("title_font_variation_name") or style.get("font_variation_name"),
+            fallback=fallback,
+        )
+        subtitle_font = load_font(
+            style.get("font_regular"),
+            int(style["subtitle_font_size"]),
+            family=family,
+            variation_name=style.get("font_variation_name"),
+            fallback=fallback,
+        )
+        label_font = load_font(
+            style.get("font_regular"),
+            int(style["label_font_size"]),
+            family=family,
+            variation_name=style.get("font_variation_name"),
+            fallback=fallback,
+        )
+        row_font = load_font(
+            style.get("font_regular"),
+            int(style["row_label_font_size"]),
+            family=family,
+            variation_name=style.get("font_variation_name"),
+            fallback=fallback,
+        )
         line_w = int(style.get("grid_line_width", 1))
+        grid_alpha = float(style.get("grid_line_alpha", 1.0))
+        skip_header_grid_line = bool(style.get("skip_header_grid_line", False))
         header_grid_y = int(style.get("header_grid_y", max(120, legend_h - 92)))
         title_text = title or f"{manifest.stem} matrix"
         subtitle_text = subtitle or f"Rows: {len(plan.rows)} values   Columns: {len(plan.cols)} values"
@@ -457,12 +578,15 @@ def render_matrix(
 
             for ri, row in enumerate(plan.rows):
                 y0 = legend_h + ri * cell
-                label = wrap_label(plan.row_labels[row], max(8, (legend_w - 20) // 9))
+                left_pad = int(style.get("row_label_left_padding", 14))
+                right_pad = int(style.get("row_label_right_padding", 14))
+                max_label_width = max(20, legend_w - left_pad - right_pad)
+                label = wrap_label_pixels(plan.row_labels[row], draw, row_font, max_label_width)
                 lines = label.split("\n")
                 line_h = int(style["row_label_font_size"]) + 4
                 y = y0 + (cell - line_h * len(lines)) // 2
                 for li, line in enumerate(lines):
-                    draw.text((int(style.get("row_label_left_padding", 14)), y + li * line_h), line, fill=text, font=row_font)
+                    draw.text((left_pad, y + li * line_h), line, fill=text, font=row_font)
                 for ci, _col in enumerate(plan.cols):
                     fp = cell_dirs.get((ri, ci), work / "missing") / f"{fi:03d}.png"
                     if fp.exists():
@@ -473,15 +597,17 @@ def render_matrix(
 
             xs = [0, legend_w] + [legend_w + i * cell for i in range(1, ncols + 1)]
             ys = [0, header_grid_y, legend_h] + [legend_h + i * cell for i in range(1, nrows + 1)]
-            draw.line([(0, 0), (width, 0)], fill=grid, width=line_w)
-            draw.line([(0, 0), (0, height)], fill=grid, width=line_w)
-            draw.line([(width - 1, 0), (width - 1, height)], fill=grid, width=line_w)
-            draw.line([(0, height - 1), (width, height - 1)], fill=grid, width=line_w)
+            draw_styled_line(draw, [(0, 0), (width, 0)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
+            draw_styled_line(draw, [(0, 0), (0, height)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
+            draw_styled_line(draw, [(width - 1, 0), (width - 1, height)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
+            draw_styled_line(draw, [(0, height - 1), (width, height - 1)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
             for x in xs[1:]:
-                draw.line([(x, header_grid_y), (x, height)], fill=grid, width=line_w)
+                draw_styled_line(draw, [(x, header_grid_y), (x, height)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
             for y in ys[1:]:
                 x_start = legend_w if y == header_grid_y else 0
-                draw.line([(x_start, y), (width, y)], fill=grid, width=line_w)
+                if skip_header_grid_line and y == header_grid_y:
+                    continue
+                draw_styled_line(draw, [(x_start, y), (width, y)], fill=grid, width=line_w, background=bg, alpha=grid_alpha)
             frame_path = frames_dir / f"{fi:03d}.png"
             image.save(frame_path, quality=95)
             if fi == 1 and preview_frame:
@@ -616,4 +742,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

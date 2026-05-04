@@ -106,6 +106,25 @@ Important flags:
 - `--preview-frame` — write frame 1 as a PNG beside the MP4.
 - `--dry-run` — print inferred rows/columns and missing cells without invoking FFmpeg.
 
+## Style
+
+The default style is presentation-oriented: black background, white Raleway typography, subtle thin white grid lines, generous title/subtitle spacing, pixel-aware row-label wrapping, and a top legend band without a horizontal rule above the column labels.
+
+Use `--style templates/matrix_style.example.json` to customize:
+
+- canvas size, optional fixed cell size, and legend dimensions
+- colors and grid-line alpha
+- font family, explicit font paths, and variable-font weights
+- title/subtitle/label sizes and positions
+- row-label left/right padding
+- top legend padding and separator positions
+- FPS and CRF
+- temp work root
+
+Font handling is local-only. The style can specify `font_family` such as `Raleway`; the renderer asks the local system/fontconfig for that font and falls back to `font_fallback` if it is not installed. It never streams Google Fonts or fetches fonts at render time. For consistent output, install or vendor the font in your project and point `font_regular` / `title_font` at the local `.ttf` file.
+
+Keep the temp work root outside directories that other apps are watching. Matrix generation creates many temporary PNG frames.
+
 ## Manifest compatibility
 
 The CLI can auto-detect common video path locations:
