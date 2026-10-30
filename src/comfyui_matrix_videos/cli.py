@@ -668,7 +668,7 @@ def make_summary(plan: MatrixPlan, *, row_key: str, col_key: str, video_key: str
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Render a labeled matrix video from a ComfyUI batch manifest.")
+    parser = argparse.ArgumentParser(description="Sweep mode: render a labeled matrix video from a batch manifest. For selected videos use: comfy-matrix-video manual --help.")
     parser.add_argument("--manifest", required=True, help="JSON, JSONL, or CSV manifest")
     parser.add_argument("--output", help="Output MP4 path. Required unless --dry-run is set")
     parser.add_argument("--row-key", default="auto", help="Dotted path for row axis, e.g. args.steps")
@@ -693,6 +693,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv[1:] if argv is None else argv)
+    if argv and argv[0] == "manual":
+        if __package__:
+            from .manual import main as manual_main
+        else:  # Copyable standalone skill/scripts directory.
+            from manual_matrix_video import main as manual_main
+        return manual_main(argv[1:])
+    if argv and argv[0] == "sweep":
+        argv = argv[1:]
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

@@ -1,7 +1,7 @@
 ---
 name: comfyui-matrix-videos
-description: Use when turning ComfyUI batch outputs into labeled matrix-review MP4s without requiring any media-library or database integration.
-version: 1.0.0
+description: Use when making video grids from sweeps or selected clips. Render and verify labeled MP4s without a database.
+version: 1.1.0
 author: Hermes Agent
 license: MIT
 metadata:
@@ -19,6 +19,23 @@ Use this skill to convert a ComfyUI batch manifest into a compact labeled matrix
 The companion CLI is `comfy-matrix-video` from the `comfyui-matrix-videos` repository. This skill also ships the same standalone script at `scripts/comfy_matrix_video.py`, plus a style template under `templates/`. The tool reads JSON, JSONL, or CSV, extracts source video paths, builds a grid with FFmpeg and Pillow, and writes an H.264 MP4 plus an optional PNG preview frame.
 
 This skill is intentionally standalone. It does not require a media manager, database, tag system, or file metadata integration.
+
+## Choose the mode first
+
+- **Sweep** (legacy default): use actual row/column parameter fields; all existing flag-only commands below remain valid. Optional explicit prefix: `comfy-matrix-video sweep ...`.
+- **Manual**: use an explicit ordered list of paths/labels, not fabricated parameter axes. Read `references/manual-mode.md` before rendering. Copy `templates/manual_sources.example.json` and `templates/manual_design.example.json`; edit paths and native dimensions/FPS/frame count. Source paths resolve relative to the source manifest. Fill row-major; reset the one-based audio index after reordering.
+
+```bash
+python3 scripts/comfy_matrix_video.py manual --sources sources.json --design design.json --dry-run
+python3 scripts/manual_matrix_video.py --sources sources.json --design design.json \
+  --stage prepare --cache-root ./unwatched-cache
+python3 scripts/comfy_matrix_video.py manual --sources sources.json --design design.json \
+  --stage compose --cache-root ./unwatched-cache --output-prefix outputs/review
+```
+
+Manual defaults: silence, one whole-grid cycle, no source trim or fade, native equal-sized cells. `all` (default) prepares missing entries and composes; `compose` cannot prepare missing entries. Opt into trim/fade only when the user requests them; remove preparation settings when inputs are already prepared. Keep lossless caches outside watched/indexed folders. Use a new output prefix for revisions; never overwrite original media.
+
+Inspect the resulting `.preview.png`, probe the MP4, read the `.verification.json`, and watch/listen to repeat seams before claiming perceptual continuity. Verify exact source order, caption fit, geometry, cadence, duration, chosen audio and loop count. Dry-run validates configuration, not media. Hash-verified repetition is not proof that source endpoints are seamless.
 
 ## When to Use
 
@@ -50,7 +67,7 @@ python3 scripts/comfy_matrix_video.py --help
 Requirements:
 
 - Python 3.10+
-- FFmpeg on `PATH`
+- FFmpeg on `PATH`; manual mode also requires ffprobe, libx264 and FFV1
 - Pillow, installed by the package
 
 ## Basic Recipe
@@ -146,7 +163,7 @@ Use `--style templates/matrix_style.example.json` to customize:
 
 Font handling is local-only. A style may name a family such as `Raleway`; the renderer asks the local system/fontconfig for that font and falls back to `font_fallback` when unavailable. It does not stream Google Fonts or download fonts at render time. For repeatable output, install or vendor the `.ttf` locally and set `font_regular` / `title_font` to that path.
 
-Keep the temp work root outside directories that other apps are watching. Matrix generation creates many temporary PNG frames.
+Keep the temp work root outside directories that other apps are watching. Sweep mode creates temporary PNG frames; manual mode streams video and retains separate preparation/composition caches.
 
 ## Common Pitfalls
 

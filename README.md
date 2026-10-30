@@ -1,12 +1,29 @@
 # comfyui-matrix-videos
 
-Turn a ComfyUI batch manifest into a labeled matrix video.
+Turn parameter sweeps **or an ordered selection of videos** into a labeled matrix video.
 
 `comfyui-matrix-videos` is a small Python CLI for reviewing video/image-generation sweeps: rows and columns are batch parameters, and each cell plays the corresponding generated clip. It is designed to pair well with the Hermes Agent ComfyUI skill's `run_batch.py` output, but it also works as a standalone manifest-to-MP4 tool.
 
 <p align="center">
   <img src="docs/assets/comfyui-matrix-demo.gif" alt="Animated ComfyUI matrix review grid" width="720">
 </p>
+
+## Choose a mode
+
+| Mode | Input | Layout and timing |
+|---|---|---|
+| **Sweep** (existing default) | JSON/JSONL/CSV parameter records | Row/column axes, sampled/scaled clips, silent output |
+| **Manual** (`manual`) | Ordered paths and optional labels + design JSON | Native equal-sized clips, explicit cadence, optional one-source audio, whole-grid loops |
+
+Use manual mode for curated comparisons without inventing parameter axes:
+
+```bash
+python3 examples/create_manual_sample.py --directory ./sample-manual
+comfy-matrix-video manual --sources sample-manual/sources.json \
+  --design sample-manual/design.json --output-prefix outputs/selected
+```
+
+See [Manual mode](docs/manual-mode.md) for selection order, geometry, audio, preparation, caches, defaults and limits. `comfy-matrix-video manual --help` lists its options. Existing flag-only commands below remain sweep mode; an optional `sweep` prefix is also accepted. Manual design JSON and sweep style JSON are separate schemas.
 
 ## Features
 
@@ -21,7 +38,7 @@ Turn a ComfyUI batch manifest into a labeled matrix video.
 ## Requirements
 
 - Python 3.10+
-- FFmpeg on `PATH`
+- FFmpeg on `PATH`; manual mode also uses ffprobe, libx264 and FFV1
 - Python package dependency: Pillow
 
 ## Install
@@ -29,7 +46,9 @@ Turn a ComfyUI batch manifest into a labeled matrix video.
 From a clone:
 
 ```bash
-python3 -m pip install -e .
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -e .
 ```
 
 Or run without installing:
@@ -127,7 +146,7 @@ Use `--style templates/matrix_style.example.json` to customize:
 
 Font handling is local-only. The style can specify `font_family` such as `Raleway`; the renderer asks the local system/fontconfig for that font and falls back to `font_fallback` if it is not installed. It never streams Google Fonts or fetches fonts at render time. For consistent output, install or vendor the font in your project and point `font_regular` / `title_font` at the local `.ttf` file.
 
-Keep the temp work root outside directories that other apps are watching. Matrix generation creates many temporary PNG frames.
+Keep the temp work root outside directories that other apps are watching. Sweep mode creates many temporary PNG frames; manual mode streams video and keeps lossless preparation/composition caches.
 
 ## Manifest compatibility
 
@@ -165,7 +184,7 @@ skills/creative/comfyui-matrix-videos/scripts/comfy_matrix_video.py
 skills/creative/comfyui-matrix-videos/templates/matrix_style.example.json
 ```
 
-The skill tells an agent when to use the CLI/script, how to map ComfyUI batch results to row/column axes, and how to verify the generated MP4.
+The copyable skill includes both modes: standalone scripts, manual sources/design templates, and `references/manual-mode.md` as well as the existing sweep style. No repository checkout is needed after copying it (Pillow and FFmpeg are still required). It explains mode selection and verification.
 
 ## Development
 
@@ -190,6 +209,15 @@ PYTHONPATH=src python3 -m comfyui_matrix_videos.cli \
   --video-key outputs[].file \
   --output outputs/example_matrix.mp4 \
   --preview-frame outputs/example_matrix.png
+```
+
+Tests include tiny synthetic FFmpeg renders when FFmpeg/ffprobe are present; CI installs them. They cover sweep helpers, manual order/geometry/validation, stage/cache separation, lossless preparation, audio/silent output, exact grid repeats, overwrite protection and bundled-script parity. No original media or GPU is used.
+
+After changing package code/templates/docs, refresh the standalone bundles and verify parity:
+
+```bash
+python3 scripts/sync_standalone.py
+python3 scripts/sync_standalone.py --check
 ```
 
 ## License

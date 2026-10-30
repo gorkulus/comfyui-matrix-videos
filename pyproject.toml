@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "comfyui-matrix-videos"
 version = "0.1.0"
-description = "Render labeled matrix-review videos from ComfyUI batch manifests."
+description = "Render matrix-review videos from parameter sweeps or ordered video selections."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }

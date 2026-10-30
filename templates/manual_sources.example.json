@@ -1,0 +1,9 @@
+{
+  "expected_count": 4,
+  "sources": [
+    {"path": "media/red.mp4", "label": "Reference"},
+    {"path": "media/blue.mp4", "label": "Variation B"},
+    {"path": "media/green.mp4", "label": "Variation C"},
+    {"path": "media/yellow.mp4", "label": "Variation D"}
+  ]
+}

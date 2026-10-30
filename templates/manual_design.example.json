@@ -1,0 +1,18 @@
+{
+  "rows": 2,
+  "columns": 2,
+  "cell_width": 128,
+  "cell_height": 96,
+  "fps": "12",
+  "frames": 12,
+  "gutter": 8,
+  "margins": {"left": 12, "right": 12, "top": 12, "bottom": 12},
+  "caption_height": 28,
+  "label_position": "caption",
+  "label_align": "center",
+  "font_size": 16,
+  "background": "#141416",
+  "text_color": "#eeeeee",
+  "audio_source_index": null,
+  "loops": [1, 3]
+}
